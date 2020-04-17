@@ -10,6 +10,7 @@ token = config.api_key
 
 URL_GROUPS_GET = 'https://api.vk.com/method/groups.get'
 URL_FRIENDS_GET = 'https://api.vk.com/method/friends.get'
+URL_GROUPS_GET_MEMBERS = 'https://api.vk.com/method/groups.getMembers'
 URL2 = 'https://api.vk.com/method/users.get'
 URL_GROUPS_GET_INFO = 'https://api.vk.com/method/groups.getById'
 
@@ -31,7 +32,7 @@ class TimeContextManager:
 class VkUser:
     def __init__(self, id):
         try:
-            user_info = get_user_id(id)
+            user_info = get_user_id(id) # Проверяем правильность введенного id
         except KeyError:
             print(f'Пользователя с id {id} нету')
             sys.exit()
@@ -158,4 +159,4 @@ if __name__ == '__main__':
         user = VkUser(input('Введите id - '))
         with open('groups.json', 'w', encoding='utf8') as f:
             to_json = search(user)
-            f.write(json.dumps(to_json))
+            f.write(json.dumps(to_json))    # to json file
