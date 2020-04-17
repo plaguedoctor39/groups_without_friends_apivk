@@ -10,9 +10,7 @@ token = config.api_key
 
 URL_GROUPS_GET = 'https://api.vk.com/method/groups.get'
 URL_FRIENDS_GET = 'https://api.vk.com/method/friends.get'
-URL_GROUPS_GET_MEMBERS = 'https://api.vk.com/method/groups.getMembers'
 URL2 = 'https://api.vk.com/method/users.get'
-URL_GROUPS_ISMEMBER = 'https://api.vk.com/method/groups.isMember'
 URL_GROUPS_GET_INFO = 'https://api.vk.com/method/groups.getById'
 
 
@@ -45,6 +43,7 @@ class VkUser:
             self.user_id = id
             self.first_name = user_info['response'][0]['first_name']
             self.last_name = user_info['response'][0]['last_name']
+        self.user_groups = self.get_groups()
         print(f'added user id{self.user_id} {self.first_name} {self.last_name}')
 
     def get_groups(self):
@@ -55,8 +54,9 @@ class VkUser:
         }
         time.sleep(0.4)
         response = requests.get(URL_GROUPS_GET, params=params)
+        print('~ get groups')
         json_ = response.json()
-        print(json_)
+        # print(json_)
         try:
             json_['response']
         except KeyError:
@@ -70,6 +70,7 @@ class VkUser:
             'v': '5.52'
         }
         response = requests.get(URL_FRIENDS_GET, params=params)
+        print('~ get friends')
         json_ = response.json()
         ids_list = json_['response']['items']
         users_list = []
@@ -91,6 +92,7 @@ def get_user_id(user):
         'access_token': token
     }
     response = requests.get(URL2, params=params)
+    print('~ get user info')
     time.sleep(0.4)
     json_ = response.json()
 
@@ -109,7 +111,7 @@ def search(user):
         print(f'Групп осталось {groups_left}')
         friends_left = len(friends)
         for friend in friends:
-            friends_groups = friend.get_groups()
+            friends_groups = friend.user_groups
             if friends_groups == 'error':
                 print(f'у пользователя {friend.user_id} приватный профиль')
                 friends_left -= 1
