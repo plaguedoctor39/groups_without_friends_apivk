@@ -159,4 +159,4 @@ if __name__ == '__main__':
         user = VkUser(input('Введите id - '))
         with open('groups.json', 'w', encoding='utf8') as f:
             to_json = search(user)
-            f.write(json.dumps(to_json))    # to json file
+            f.write(json.dumps(to_json, ensure_ascii=False))    # to json file
