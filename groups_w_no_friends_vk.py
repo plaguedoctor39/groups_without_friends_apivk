@@ -32,7 +32,7 @@ class TimeContextManager:
 class VkUser:
     def __init__(self, id):
         try:
-            user_info = get_user_id(id) # Проверяем правильность введенного id
+            user_info = get_user_ id(id) # Проверяем правильность введенного id
         except KeyError:
             print(f'Пользователя с id {id} нету')
             sys.exit()
