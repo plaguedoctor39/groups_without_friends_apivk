@@ -1,63 +1,37 @@
 import json
-import requests
-import time
-import config
-import datetime as dt
 import sys
-
-token = config.api_key
-
-
-URL_GROUPS_GET = 'https://api.vk.com/method/groups.get'
-URL_FRIENDS_GET = 'https://api.vk.com/method/friends.get'
-URL_GROUPS_GET_MEMBERS = 'https://api.vk.com/method/groups.getMembers'
-URL2 = 'https://api.vk.com/method/users.get'
-URL_GROUPS_GET_INFO = 'https://api.vk.com/method/groups.getById'
-
-
-class TimeContextManager:
-    def __init__(self):
-        self.current_time = dt.datetime.today()
-
-    def __enter__(self):
-        print('Начало работы программы -', self.current_time.strftime('%H:%M:%S'))
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.end_time = dt.datetime.today()
-        print('Конец работы программы -', self.end_time.strftime('%H:%M:%S'))
-        self.time_worked = self.end_time - self.current_time
-        print('Время работы программы -', self.time_worked)
+import time
+from vk_api import constants
+from time_check import TimeContextManager
 
 
 class VkUser:
-    def __init__(self, id):
+    def __init__(self, user_id):
+        user_info = constants.VkApi(user_id).get_response('users.get')
+        print('~ get user info')
         try:
             user_info = get_user_ id(id) # Проверяем правильность введенного id
+            user_info['response']            # Проверяем правильность введенного id
         except KeyError:
-            print(f'Пользователя с id {id} нету')
+            print(f'Пользователя с id {user_id} нету')
             sys.exit()
-        if id[0].isalpha():
-            self.user_id = user_info['response'][0]['id']
-            self.first_name = user_info['response'][0]['first_name']
-            self.last_name = user_info['response'][0]['last_name']
+        if 'deactivated' in user_info['response'][0]:
+            print(f'Пользователь {user_info["response"][0]["id"]} удален или забанен')
+            self.user_id = 'deactivated'
         else:
-            self.user_id = id
-            self.first_name = user_info['response'][0]['first_name']
-            self.last_name = user_info['response'][0]['last_name']
-        self.user_groups = self.get_groups()
-        print(f'added user id{self.user_id} {self.first_name} {self.last_name}')
+            if user_id[0].isalpha():
+                self.user_id = user_info['response'][0]['id']
+                self.first_name = user_info['response'][0]['first_name']
+                self.last_name = user_info['response'][0]['last_name']
+            else:
+                self.user_id = user_id
+                self.first_name = user_info['response'][0]['first_name']
+                self.last_name = user_info['response'][0]['last_name']
+            print(f'added user id{self.user_id} {self.first_name} {self.last_name}')
 
     def get_groups(self):
-        params = {
-            'user_id': self.user_id,
-            'access_token': token,
-            'v': '5.52'
-        }
-        time.sleep(0.4)
-        response = requests.get(URL_GROUPS_GET, params=params)
+        json_ = constants.VkApi(self.user_id).get_response('groups.get')
         print('~ get groups')
-        json_ = response.json()
-        # print(json_)
         try:
             json_['response']
         except KeyError:
@@ -65,98 +39,92 @@ class VkUser:
         return json_['response']['items']
 
     def get_friends(self):
-        params = {
-            'user_id': self.user_id,
-            'access_token': token,
-            'v': '5.52'
-        }
-        response = requests.get(URL_FRIENDS_GET, params=params)
+        json_ = constants.VkApi(self.user_id).get_response('friends.get')
         print('~ get friends')
-        json_ = response.json()
         ids_list = json_['response']['items']
         users_list = []
-        for user in ids_list:
-            users_list.append(VkUser(str(user)))
+        user_ids_list = []
+        for user_id in ids_list:
+            users_list.append(VkUser(str(user_id)))
             time.sleep(0.3)
-        for user in users_list:
-            if user.first_name == 'DELETED':
-                users_list.remove(user)
+        for vk_user in users_list:
+            if vk_user.user_id == 'deactivated':
+                pass
             else:
-                continue
-        return users_list
+                user_ids_list.append(vk_user.user_id)
+        return user_ids_list
 
-
-def get_user_id(user):
-    params = {
-        'user_ids': user,
-        'v': '5.52',
-        'access_token': token
-    }
-    response = requests.get(URL2, params=params)
-    print('~ get user info')
-    time.sleep(0.4)
-    json_ = response.json()
-
-    return json_
-
-
-def search(user):
-    groups = user.get_groups()
-    if groups == 'error':
-        print(f'у пользователя {user.user_id} приватный профиль')
-        sys.exit()
-    friends = user.get_friends()
-    groups_without_friends = []
-    groups_left = len(groups)
-    for group in groups:
-        print(f'Групп осталось {groups_left}')
-        friends_left = len(friends)
-        for friend in friends:
-            friends_groups = friend.user_groups
-            if friends_groups == 'error':
-                print(f'у пользователя {friend.user_id} приватный профиль')
-                friends_left -= 1
-                continue
+    def search(self):
+        groups = self.get_groups()
+        if groups == 'error':
+            print(f'у пользователя {self.user_id} приватный профиль')
+            sys.exit()
+        groups_list = self.do_execute()
+        groups_without_friends = []
+        for group in groups:
+            if group in groups_list:
+                pass
             else:
-                if group in friends_groups:
-                    groups_left -= 1
-                    break
+                groups_without_friends.append(group)
+
+        list_to_json = []
+        for group in groups_without_friends:
+            json_ = constants.VkApi(user).get_response('groups.getById', {'group_id': group})
+            print('~ get group info')
+            json_2 = constants.VkApi(user).get_response('groups.getMembers', {'group_id': group})
+            print('~ get group members')
+            group_info = {
+                'name': json_['response'][0]['name'],
+                'gid': json_['response'][0]['id'],
+                'members_count': json_2['response']['count']
+            }
+            list_to_json.append(group_info)
+        return list_to_json
+
+    def do_execute(self):
+        friends_list = self.get_friends()
+        itter = len(friends_list) // 25
+        execute_list = [[] * 25] * (itter + 1)
+        tmp = []
+        list_id = 0
+        response_list = []
+        for friend_list in range(itter + 1):
+            for i in range(25):
+                if list_id < len(friends_list):
+                    tmp.append(friends_list[list_id])
+                    list_id += 1
                 else:
-                    friends_left -= 1
-                    print(f'Проверить друзей для группы {group} осталось {friends_left}')
-                    if friends_left == 0:
-                        groups_without_friends.append(group)
-                    else:
-                        continue
-
-    # print(groups_without_friends)
-    list_to_json = []
-    for group in groups_without_friends:
-        params = {
-            'group_id': group,
-            'access_token': token,
-            'v': '5.61'
-        }
-        response = requests.get(URL_GROUPS_GET_INFO, params=params)
-        time.sleep(0.4)
-        response2 = requests.get(URL_GROUPS_GET_MEMBERS, params=params)
-        time.sleep(0.4)
-        json_ = response.json()
-        json_2 = response2.json()
-        group_info = {
-            'name': json_['response'][0]['name'],
-            'gid': json_['response'][0]['id'],
-            'members_count': json_2['response']['count']
-        }
-        list_to_json.append(group_info)
-    print(list_to_json)
-    return list_to_json
+                    break
+            execute_list[friend_list] = tmp
+            tmp = []
+        for i in range(itter):
+            code_friends = f"var friends = {execute_list[i]};"
+            code = """var groups = [];
+            var i = 0;
+            while (i < friends.length) {
+                groups.push(API.groups.get({"user_id": friends[i], "extended": 0}));
+                i = i + 1;
+            };
+            return groups;"""
+            code = code_friends + code
+            json_ = constants.VkApi(self.user_id).get_response('execute', {'code': code})
+            print('~ execute')
+            response_list.append(json_)
+        groups_list = []
+        for resp in response_list:
+            for item in resp['response']:
+                try:
+                    groups_list.extend(item['items'])
+                except TypeError:
+                    print('Приватный профиль')
+        groups_list = list(set(groups_list))
+        return groups_list
 
 
 if __name__ == '__main__':
-    # config.get_token()
     with TimeContextManager():
         user = VkUser(input('Введите id - '))
         with open('groups.json', 'w', encoding='utf8') as f:
-            to_json = search(user)
-            f.write(json.dumps(to_json, ensure_ascii=False))    # to json file
+            to_json = user.search()
+            f.write(json.dumps(to_json, ensure_ascii=False))  # to json file
+            print('Информация успешно загруженна')
