@@ -10,7 +10,6 @@ class VkUser:
         user_info = constants.VkApi(user_id).get_response('users.get')
         print('~ get user info')
         try:
-            user_info = get_user_ id(id) # Проверяем правильность введенного id
             user_info['response']            # Проверяем правильность введенного id
         except KeyError:
             print(f'Пользователя с id {user_id} нету')
