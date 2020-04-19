@@ -9,9 +9,8 @@ class VkApi:
     TOKEN = api_key
     PARAMS = {}
 
-    def __init__(self, user_id):
+    def __init__(self):
         self.PARAMS = {
-            'user_id': user_id,
             'access_token': self.TOKEN,
             'v': self.API_VERSION_VK
         }

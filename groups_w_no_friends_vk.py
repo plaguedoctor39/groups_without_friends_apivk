@@ -3,17 +3,12 @@ import sys
 import time
 from vk_api import constants
 from time_check import TimeContextManager
+from result_writer import file_writer
 
 
 class VkUser:
     def __init__(self, user_id):
-        user_info = constants.VkApi(user_id).get_response('users.get')
-        print('~ get user info')
-        try:
-            user_info['response']            # Проверяем правильность введенного id
-        except KeyError:
-            print(f'Пользователя с id {user_id} нету')
-            sys.exit()
+        user_info = self.check_user_id(user_id)
         if 'deactivated' in user_info['response'][0]:
             print(f'Пользователь {user_info["response"][0]["id"]} удален или забанен')
             self.user_id = 'deactivated'
@@ -29,7 +24,7 @@ class VkUser:
             print(f'added user id{self.user_id} {self.first_name} {self.last_name}')
 
     def get_groups(self):
-        json_ = constants.VkApi(self.user_id).get_response('groups.get')
+        json_ = constants.VkApi().get_response('groups.get', {'user_id': self.user_id})
         print('~ get groups')
         try:
             json_['response']
@@ -38,7 +33,7 @@ class VkUser:
         return json_['response']['items']
 
     def get_friends(self):
-        json_ = constants.VkApi(self.user_id).get_response('friends.get')
+        json_ = constants.VkApi().get_response('friends.get', {'user_id': self.user_id})
         print('~ get friends')
         ids_list = json_['response']['items']
         users_list = []
@@ -68,9 +63,9 @@ class VkUser:
 
         list_to_json = []
         for group in groups_without_friends:
-            json_ = constants.VkApi(user).get_response('groups.getById', {'group_id': group})
+            json_ = constants.VkApi().get_response('groups.getById', {'group_id': group})
             print('~ get group info')
-            json_2 = constants.VkApi(user).get_response('groups.getMembers', {'group_id': group})
+            json_2 = constants.VkApi().get_response('groups.getMembers', {'group_id': group})
             print('~ get group members')
             group_info = {
                 'name': json_['response'][0]['name'],
@@ -106,7 +101,7 @@ class VkUser:
             };
             return groups;"""
             code = code_friends + code
-            json_ = constants.VkApi(self.user_id).get_response('execute', {'code': code})
+            json_ = constants.VkApi().get_response('execute', {'code': code})
             print('~ execute')
             response_list.append(json_)
         groups_list = []
@@ -119,11 +114,20 @@ class VkUser:
         groups_list = list(set(groups_list))
         return groups_list
 
+    def check_user_id(self, user_id):
+        user_info = constants.VkApi().get_response('users.get', {'user_ids': user_id})
+        print('~ get user info')
+        try:
+            user_info['response']
+            # Проверяем правильность введенного id
+        except KeyError:
+            print(f'Пользователя с id {user_id} нету')
+            sys.exit()
+        return user_info
+
 
 if __name__ == '__main__':
     with TimeContextManager():
         user = VkUser(input('Введите id - '))
-        with open('groups.json', 'w', encoding='utf8') as f:
-            to_json = user.search()
-            f.write(json.dumps(to_json, ensure_ascii=False))  # to json file
-            print('Информация успешно загруженна')
+        to_json = user.search()
+        file_writer(to_json)
