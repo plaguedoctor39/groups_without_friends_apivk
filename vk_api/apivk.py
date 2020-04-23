@@ -10,12 +10,18 @@ class VkApi:
     URL_VK = constants.URL_VK
     TOKEN = constants.api_key
     PARAMS = constants.PARAMS
+    METHOD_GROUPS_GET = 'groups.get'
+    METHOD_USERS_GET = 'users.get'
+    METHOD_FRIENDS_GET = 'friends.get'
 
-    def __init__(self):
+    def __init__(self, user_id):
         self.PARAMS = {
             'access_token': self.TOKEN,
             'v': self.API_VERSION_VK
         }
+
+    def get_url(self, method):
+        return f'{self.URL_VK}{method}'
 
     def get_response(self, method, params=None):
         if params is None:
@@ -23,15 +29,15 @@ class VkApi:
         else:
             current_params = self.PARAMS
             current_params.update(params)
-        cur_url = self.URL_VK + method
-        response = requests.get(cur_url, current_params)
-        time.sleep(0.4)
+        response = requests.get(self.get_url(method), current_params)
+        time.sleep(constants.TIME_SLEEP)
         json_ = response.json()
         return json_
 
 
 class VkUser(VkApi):
     def __init__(self, user_id):
+        super().__init__(user_id)
         user_info = self.check_user_id(user_id)
         if user_id[0].isalpha():
             self.user_id = user_info['response'][0]['id']
@@ -44,7 +50,7 @@ class VkUser(VkApi):
         print(f'added user id{self.user_id} {self.first_name} {self.last_name}')
 
     def get_groups(self):
-        json_ = VkApi().get_response('groups.get', {'user_id': self.user_id})
+        json_ = self.get_response(self.METHOD_GROUPS_GET, {'user_id': self.user_id})
         print('~ get groups')
         try:
             json_['response']
@@ -53,7 +59,7 @@ class VkUser(VkApi):
         return json_['response']['items']
 
     def get_friends(self):
-        json_ = VkApi().get_response('friends.get', {'user_id': self.user_id})
+        json_ = self.get_response(self.METHOD_FRIENDS_GET, {'user_id': self.user_id})
         print('~ get friends')
         ids_list = json_['response']['items']
         # users_list = []
@@ -90,7 +96,7 @@ class VkUser(VkApi):
             groups_info.push(API.groups.getById({"group_ids": groups, "fields": "members_count"}));
                 return groups_info;"""
             code = code_groups + code
-            json_2 = VkApi().get_response('execute', {'code': code})
+            json_2 = self.get_response('execute', {'code': code})
             print('~ execute groups')
             response_list.append(json_2)
         for resp in response_list:
@@ -130,30 +136,30 @@ class VkUser(VkApi):
             };
             return groups;"""
             code = code_friends + code
-            json_ = VkApi().get_response('execute', {'code': code})
+            json_ = self.get_response('execute', {'code': code})
             print('~ execute friends')
             response_list.append(json_)
         groups_list = []
+        friends_with_private_profile = 0
         for resp in response_list:
             for item in resp['response']:
-                try:
+                if not item:
+                    friends_with_private_profile += 1
+                else:
                     groups_list.extend(item['items'])
-                except TypeError:
-                    print('Не смог получить доступ к группам')
+        print(f'У {friends_with_private_profile} друзей не удалось получить информацию о группах, возможно, у них '
+              f'приватный профиль или страница удалена')
         groups_list = list(set(groups_list))
         return groups_list
 
     def check_user_id(self, user_id):
-        user_info = VkApi().get_response('users.get', {'user_ids': user_id})
+        user_info = self.get_response(self.METHOD_USERS_GET, {'user_ids': user_id})
         print('~ get user info')
         try:
-            user_info['response']
             # Проверяем правильность введенного id
             if 'deactivated' in user_info['response'][0]:
                 print(f'Пользователь {user_info["response"][0]["id"]} удален или забанен')
                 sys.exit()
-            else:
-                pass
         except KeyError:
             # print(user_info)
             print(f'Пользователя с id {user_id} нету')
