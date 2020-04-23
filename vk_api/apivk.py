@@ -1,7 +1,6 @@
 from vk_api import constants
 import requests
 import time
-import json
 import sys
 
 
