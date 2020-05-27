@@ -1,4 +1,5 @@
 from vk_api import constants
+from logger.dec_logger import param_logger
 import requests
 import time
 import sys
@@ -18,7 +19,7 @@ class VkApi:
             'access_token': self.TOKEN,
             'v': self.API_VERSION_VK
         }
-
+    @param_logger('logs.txt')
     def get_url(self, method):
         return f'{self.URL_VK}{method}'
 
@@ -151,6 +152,7 @@ class VkUser(VkApi):
         groups_list = list(set(groups_list))
         return groups_list
 
+    @param_logger('logs.txt')
     def check_user_id(self, user_id):
         user_info = self.get_response(self.METHOD_USERS_GET, {'user_ids': user_id})
         print('~ get user info')
